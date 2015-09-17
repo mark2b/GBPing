@@ -62,6 +62,10 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
     NSTimeInterval                                      _pingPeriod;
 }
 
+- (dispatch_queue_t) delegateQueue {
+    return _delegateQueue ?: dispatch_get_main_queue();
+}
+
 #pragma mark - custom acc
 
 -(void)setTimeout:(NSTimeInterval)timeout {
@@ -170,7 +174,7 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
         }
         
         //notify about error and return
-        dispatch_async(dispatch_get_main_queue(), ^{
+        dispatch_async([self delegateQueue], ^{
             callback(NO, nil);
         });
         return;
@@ -183,7 +187,7 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
         }
         
         //notify about error and return
-        dispatch_async(dispatch_get_main_queue(), ^{
+        dispatch_async([self delegateQueue], ^{
             callback(NO, nil);
         });
         return;
@@ -221,7 +225,7 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
             [self stop];
             
             //notify about error and return
-            dispatch_async(dispatch_get_main_queue(), ^{
+            dispatch_async([self delegateQueue], ^{
                 callback(NO, error);
             });
             return;
@@ -257,7 +261,7 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
             [self stop];
             
             //notify about error and return
-            dispatch_async(dispatch_get_main_queue(), ^{
+            dispatch_async([self delegateQueue], ^{
                 callback(NO, [NSError errorWithDomain:(NSString *)kCFErrorDomainCFNetwork code:kCFHostErrorHostNotFound userInfo:nil]);
             });
             return;
@@ -273,7 +277,7 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
                 }
             } break;
             case AF_INET6: {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async([self delegateQueue], ^{
                     callback(NO, nil);
                 });
                 return;
@@ -289,7 +293,7 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
             [self stop];
             
             //notify about error and close
-            dispatch_async(dispatch_get_main_queue(), ^{
+            dispatch_async([self delegateQueue], ^{
                 callback(NO, [NSError errorWithDomain:NSPOSIXErrorDomain code:err userInfo:nil]);
             });
             return;
@@ -305,7 +309,7 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
         self.isReady = YES;
         
         //notify that we are ready
-        dispatch_async(dispatch_get_main_queue(), ^{
+        dispatch_async([self delegateQueue], ^{
             callback(YES, nil);
         });
     });
@@ -387,7 +391,7 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
                 
                 
                 if (self.delegate && [self.delegate respondsToSelector:@selector(ping:didReceiveReplyWithSummary:)] ) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
+                    dispatch_async([self delegateQueue], ^{
                         //notify delegate
                         [self.delegate ping:self didReceiveReplyWithSummary:[pingSummary copy]];
                     });
@@ -397,7 +401,7 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
                 pingSummary.status = GBPingStatusFail;
                 
                 if (self.delegate && [self.delegate respondsToSelector:@selector(ping:didReceiveUnexpectedReplyWithSummary:)] ) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
+                    dispatch_async([self delegateQueue], ^{
                         [self.delegate ping:self didReceiveUnexpectedReplyWithSummary:[pingSummary copy]];
                     });
                 }
@@ -415,7 +419,7 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
         @synchronized(self) {
             if (!self.isStopped) {
                 if (self.delegate && [self.delegate respondsToSelector:@selector(ping:didFailWithError:)] ) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
+                    dispatch_async([self delegateQueue], ^{
                         [self.delegate ping:self didFailWithError:[NSError errorWithDomain:NSPOSIXErrorDomain code:err userInfo:nil]];
                     });
                 }
@@ -496,7 +500,7 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
             GBPingSummary *pingSummaryCopy = [newPingSummary copy];
             
             //we need to clean up our list of pending pings, and we do that after the timeout has elapsed (+ some grace period)
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((self.timeout + kPendingPingsCleanupGrace) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((self.timeout + kPendingPingsCleanupGrace) * NSEC_PER_SEC)), [self delegateQueue], ^{
                 //remove the ping from the pending list
                 [self.pendingPings removeObjectForKey:key];
             });
@@ -507,7 +511,7 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
                 
                 //notify about the failure
                 if (self.delegate && [self.delegate respondsToSelector:@selector(ping:didTimeoutWithSummary:)]) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
+                    dispatch_async([self delegateQueue], ^{
                         [self.delegate ping:self didTimeoutWithSummary:pingSummaryCopy];
                     });
                 }
@@ -525,7 +529,7 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
             
             //notify delegate about this
             if (self.delegate && [self.delegate respondsToSelector:@selector(ping:didSendPingWithSummary:)]) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async([self delegateQueue], ^{
                     [self.delegate ping:self didSendPingWithSummary:pingSummaryCopy];
                 });
             }
@@ -569,7 +573,7 @@ static NSTimeInterval const kDefaultTimeout =           2.0;
             
             //notify delegate
             if (self.delegate && [self.delegate respondsToSelector:@selector(ping:didFailToSendPingWithSummary:error:)]) {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async([self delegateQueue], ^{
                     [self.delegate ping:self didFailToSendPingWithSummary:pingSummaryCopyAfterFailure error:[NSError errorWithDomain:NSPOSIXErrorDomain code:err userInfo:nil]];
                 });
             }

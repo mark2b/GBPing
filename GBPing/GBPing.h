@@ -18,6 +18,7 @@ typedef void(^StartupCallback)(BOOL success, NSError *error);
 @interface GBPing : NSObject
 
 @property (weak, nonatomic) id<GBPingDelegate>      delegate;
+@property (assign, nonatomic) dispatch_queue_t      delegateQueue;
 
 @property (copy, nonatomic) NSString                *host;
 @property (assign, atomic) NSTimeInterval           pingPeriod;
